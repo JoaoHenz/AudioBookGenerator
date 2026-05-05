@@ -34,8 +34,8 @@ Commit as you go — don't batch everything at the end.
 
 1. Run format and lint fix from the repo root before anything else:
     ```
-    npx prettier --write .
-    npx eslint . --ext .ts,.tsx --fix
+    ruff format .
+    ruff check --fix .
     ```
 2. Run `git status` and `git diff` to see all changes
 3. Identify each logical change in the diff and plan the commit sequence
