@@ -41,3 +41,4 @@ Rules:
     - If it exists: update it with `gh pr edit <num> --title "..." --body "$(cat <<'EOF' ... EOF)"`.
     - If it does not: create it with `gh pr create --title "..." --body "$(cat <<'EOF' ... EOF)"`.
 5. Return the PR URL to the user. If the user wants a Copilot review, tell them to click "Re-request review" next to Copilot in the PR UI — you can't trigger it from here.
+6. Offer to review the PR yourself in the same turn (e.g. "Want me to do a review pass on it via `/review-pr`?"). If they say yes, invoke the `/review-pr` skill.
