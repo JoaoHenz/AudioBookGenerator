@@ -5,7 +5,7 @@ Review a pull request like a thoughtful reviewer: read the changes, leave inline
 1. Resolve the target PR:
     - If the user passed a number (`/review-pr 42`), use it.
     - Otherwise resolve from the current branch: `gh pr view --json number,url,headRefOid,baseRefName,headRefName,author,title,body,files`.
-    - If the PR author matches the active `gh` user (`gh api user --jq .login`), tell the user you will not approve your own changes and downgrade the final verdict to `COMMENT` even if nothing is wrong.
+    - If the PR author matches the active `gh` user (`gh api user --jq .login`), the GitHub API will reject `APPROVE` / `REQUEST_CHANGES`. In that case, **still form an explicit verdict** based on the merits — just submit it via `event=COMMENT` and state the real verdict in the summary body (see step 6). Never substitute "no opinion" for the verdict.
 
 2. Fetch context:
     - `gh pr diff <num>` for the unified diff.
@@ -29,12 +29,17 @@ Review a pull request like a thoughtful reviewer: read the changes, leave inline
     ````
     For larger refactors, describe the change in prose. Don't leave nit-only comments on every minor preference; pick the ones that matter.
 
-5. Pick the verdict:
+5. Pick the verdict. **Every review must end on either `APPROVE` or `REQUEST_CHANGES`** — the whole point of the skill is to take a stance.
     - `APPROVE` — no blocking issues; minor nits are fine.
     - `REQUEST_CHANGES` — at least one bug, security issue, or correctness gap that must be fixed before merge.
-    - `COMMENT` — observations only, or you're unsure of project conventions, or you authored the PR (see step 1).
+    - Do not pick a neutral "comment" verdict to dodge taking a position. If you genuinely lack the context to decide, ask the user before submitting.
 
-6. Write the summary body. One sentence stating the verdict and why, then a short bullet list of the highest-signal findings (group by file if it helps). Keep it under ~200 words. End with `-by claude-code` on its own line.
+6. Write the summary body. **First line is the verdict header**, in bold, e.g.:
+    - `**Verdict: APPROVE**` — when nothing is blocking.
+    - `**Verdict: REQUEST CHANGES**` — when something must be fixed.
+    - When the API event has to be downgraded to `COMMENT` (self-review), still lead with the same header and append ` _(posted as comment because reviewing own PR — GitHub blocks self-approval)_`.
+
+    Follow the header with one sentence of justification, then a short bullet list of the highest-signal findings (group by file if it helps). Keep it under ~200 words. End with `-by claude-code` on its own line.
 
 7. Submit the review in a single API call so inline comments and the verdict post atomically. Build the JSON payload, then:
     ```bash
@@ -42,7 +47,7 @@ Review a pull request like a thoughtful reviewer: read the changes, leave inline
     {
       "commit_id": "<headRefOid>",
       "event": "APPROVE | REQUEST_CHANGES | COMMENT",
-      "body": "<summary ending with -by claude-code>",
+      "body": "<summary starting with **Verdict: ...** and ending with -by claude-code>",
       "comments": [
         {"path": "src/foo.py", "line": 42, "side": "RIGHT", "body": "<comment ending with -by claude-code>"},
         {"path": "src/bar.py", "start_line": 10, "start_side": "RIGHT", "line": 14, "side": "RIGHT", "body": "<multi-line comment>"}
@@ -50,6 +55,7 @@ Review a pull request like a thoughtful reviewer: read the changes, leave inline
     }
     EOF
     ```
+    - Map the picked verdict to `event`: APPROVE → `APPROVE`, REQUEST CHANGES → `REQUEST_CHANGES`. Use `COMMENT` **only** for the self-review downgrade case from step 1.
     - `line` is the line number in the **post-state** file (the new file).
     - For multi-line comments, add `start_line` + `start_side`.
     - Every inline comment body must also end with `-by claude-code` on its own line.
